@@ -10,51 +10,45 @@ import NeuralNetworking.Nodes.Input;
 import NeuralNetworking.Nodes.Node;
 import NeuralNetworking.Nodes.Output;
 
-import java.io.*;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Scanner;
 
-public class Brain implements Serializable, BrainType {
-    private Node[][] layers;
-    private Change change;
-    public Brain(Input[] inputLayer, int hiddenLayerCount, int hiddenLayerSize, Output[] outputLayer){
-        layers = new Node[hiddenLayerCount+2][hiddenLayerSize];
-        layers[0] = inputLayer;
-        layers[layers.length-1] = outputLayer;
-
-        for (int i = 1; i < layers.length-1; i++) {
-            for (int j = 0; j < layers[i].length; j++) {
-                layers[i][j] = new Node();
-            }
+public class Brain2 implements Serializable, BrainType {
+    public Matrix[] weights;
+    Input[] inputs;
+    Output[] outputs;
+    public Brain2(Input[] inputLayer, int hiddenLayerCount, int hiddenLayerSize, Output[] outputLayer){
+        inputs = inputLayer;
+        outputs = outputLayer;
+        weights = new Matrix[hiddenLayerCount+2];
+        weights[0] = new Matrix(inputLayer.length,hiddenLayerSize);
+        weights[hiddenLayerCount+1] = new Matrix(hiddenLayerSize,outputLayer.length);
+        for (int i = 1; i <= hiddenLayerCount; i++) {
+            weights[i] = new Matrix(hiddenLayerSize,hiddenLayerSize);
         }
-        int nodeCount = 0;
-        for (int i = layers.length-1; i > 0; i--)
-            for (int j = 0; j < layers[i].length; j++)
-                for (int k = 0; k < layers[i - 1].length; k++){
-                    layers[i][j].addNode(0,layers[i-1][k]);
-                    nodeCount++;
-                }
-        //System.out.println(nodeCount*hiddenLayerSize*8);
     }
     //({6.0764101506668835,5.186463528692611,-1.1143764128869569},{5.141913836368177,-3.3271683493025677,-2.341500083997435}),({4.616472768631368,4.813948901386801},{-4.37902181191741,-4.6337938134514625}),({8.289072083159363,3.938348718377254},{5.81960339701706,6.192164241732041})
-    public Brain(Input[] inputLayer, Output[] outputLayer, String weights){
-        int hiddenLayerCount = weights.length() - weights.replaceAll("<","").length();
+    public Brain2(Input[] inputLayer, Output[] outputLayer, String data){
+        int hiddenLayerCount = data.length() - data.replaceAll("<","").length();
         int currentLayer = 0;
         int currentNode = -1;
         int connectionNum = 0;
-        layers = new Node[hiddenLayerCount+1][1];
-        layers[0] = inputLayer;
-        layers[layers.length-1] = outputLayer;
-        Scanner s = new Scanner(weights);
+        inputs = inputLayer;
+        outputs = outputLayer;
+
+        Scanner s = new Scanner(data);
         char c;
+
+        weights = new Matrix[hiddenLayerCount+2];
 
         s.useDelimiter("");
         while(s.hasNext()){
             if(s.hasNextDouble()){
                 double num = s.nextDouble();
-                layers[currentLayer][currentNode].addNode(num,layers[currentLayer-1][connectionNum++]);
+                weights[currentLayer].set(currentNode,connectionNum++,num);
                 //System.out.print(num+" ");
                 if (!s.hasNextDouble())
                     s.useDelimiter("");
@@ -69,11 +63,12 @@ public class Brain implements Serializable, BrainType {
                         s.useDelimiter("");
 
                         currentLayer++;
-                        if (currentLayer<layers.length-1){
-                            layers[currentLayer] = new Node[layerSize];
-                            for (int j = 0; j < layerSize; j++) {
-                                layers[currentLayer][j] = new Node();
-                            }
+                        if (currentLayer == 0){
+                            weights[currentLayer] = new Matrix(inputLayer.length,layerSize);
+                        }else if (currentLayer<hiddenLayerCount+2){
+                            weights[currentLayer] = new Matrix(layerSize,layerSize);
+                        }else{
+                            weights[currentLayer] = new Matrix(outputLayer.length,layerSize);
                         }
                         currentNode = -1;
                         break;
@@ -88,14 +83,14 @@ public class Brain implements Serializable, BrainType {
         //System.out.println();
     }
 
-    public static Brain evolve(LinkedList<BrainObject> objects,double n){
-        Brain master;
+    public static Brain2 evolve(LinkedList<BrainObject> objects, double n){
+        Brain2 master;
 
         Random r = new Random();
 
         BrainObject.sort(objects);
 
-        master = objects.getLast().getBrain();
+        master = (Brain2)objects.getLast().getBrain();
         System.out.println(objects.getLast().fitnessReport());
 
         LinkedList<Output> group = new LinkedList<>();
@@ -107,14 +102,12 @@ public class Brain implements Serializable, BrainType {
 
             group.add(new Output((double x)->{
                 if ((double)finalI/objects.size() < 0.8){
-                    for (int layerPos = 0; layerPos < master.layers.length; layerPos++) {
-                        for (int nodePos = 0; nodePos < master.layers[layerPos].length; nodePos++) {
-                            for (int connPos = 0; connPos < master.layers[layerPos][nodePos].getConnections().size(); connPos++) {
-                                double changeVal = master.layers[layerPos][nodePos].getConnections().get(connPos).getWeight()+(5*(1+n/10))*r.nextGaussian();
+                    for (int layerPos = 0; layerPos < master.weights.length; layerPos++) {
+                        for (int nodePos = 0; nodePos < master.weights[layerPos].getRowDimension(); nodePos++) {
+                            for (int connPos = 0; connPos < master.weights[layerPos].getColumnDimension(); connPos++) {
+                                double changeVal = master.weights[layerPos].get(nodePos,connPos)+(5*(1+n/10))*r.nextGaussian();
                                 Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
-
-                                object.getBrain().setChange(c);
-                                object.getBrain().applyChange(c);
+                                ((Brain2)object.getBrain()).weights[layerPos].set(nodePos,connPos,changeVal);
                             }
                         }
                     }
@@ -145,7 +138,7 @@ public class Brain implements Serializable, BrainType {
         return master;
     }
 
-    public static Brain evolve2(LinkedList<BrainObject> objects){
+    public static Brain2 evolve2(LinkedList<BrainObject> objects){
         double[][] scores = new double[objects.size()][];
         double[][] param = new double[objects.size()][];
 
@@ -158,10 +151,12 @@ public class Brain implements Serializable, BrainType {
             group.add(new Output((double x) -> {
                 BrainObject object = finalObjects.get(finalK);
                 LinkedList<Double> weights = new LinkedList<>();
-                for (int i = 0; i < object.getBrain().layers.length; i++) {
-                    for (Node n:object.getBrain().layers[i]) {
-                        for(Connection con:n.getConnections())
-                            weights.add(con.getWeight());
+
+                for (Matrix n:((Brain2)object.getBrain()).weights) {
+                    for (int i = 0; i < n.getRowDimension(); i++) {
+                        for(int j = 0; j < n.getColumnDimension();j++) {
+                            weights.add(n.get(i, j));
+                        }
                     }
                 }
 
@@ -233,7 +228,7 @@ public class Brain implements Serializable, BrainType {
         Random r = new Random();
 
         BrainObject.sort(objects);
-        Brain basis = objects.getLast().getBrain();
+        Brain2 basis = (Brain2) objects.getLast().getBrain();
 
         System.out.println(objects.getLast().fitnessReport());
 
@@ -251,31 +246,31 @@ public class Brain implements Serializable, BrainType {
             double finalLen = len;
             LinkedList<BrainObject> finalObjects1 = objects;
             group.add(new Output((double x) -> {
-                for (int layerPos = 0; layerPos < object.getBrain().layers.length; layerPos++) {
-                    for (int nodePos = 0; nodePos < object.getBrain().layers[layerPos].length; nodePos++) {
-                        for (int connPos = 0; connPos < object.getBrain().layers[layerPos][nodePos].getConnections().size(); connPos++) {
+                for (int layerPos = 0; layerPos < ((Brain2)object.getBrain()).weights.length; layerPos++) {
+                    for (int nodePos = 0; nodePos < ((Brain2)object.getBrain()).weights[layerPos].getRowDimension(); nodePos++) {
+                        for (int connPos = 0; connPos < ((Brain2)object.getBrain()).weights[layerPos].getColumnDimension(); connPos++) {
                             int pNum = 0;
                             for (int j = 0; j < layerPos; j++) {
-                                pNum += object.getBrain().layers[layerPos].length;
+                                pNum += ((Brain2)object.getBrain()).weights[layerPos].getRowDimension();
                             }
                             for (int j = 0; j < nodePos; j++) {
-                                pNum += object.getBrain().layers[layerPos][nodePos].getConnections().size();
+                                pNum += ((Brain2)object.getBrain()).weights[layerPos].getColumnDimension();
                             }
 
                             pNum += connPos;
-                            double changeVal=object.getBrain().layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
+                            double changeVal=((Brain2)object.getBrain()).weights[layerPos].get(nodePos,connPos);
                             if (finalI != finalObjects1.size()-1){
                                 if ((double)finalI/finalObjects1.size() > 0.95)
                                     if(r.nextDouble() > 0.95)
                                         changeVal = 15*r.nextGaussian();
-                                else if ((double)finalI/finalObjects1.size() > 0.8)
-                                    if(r.nextDouble() > 0.5)
-                                        changeVal = basis.layers[layerPos][nodePos].getConnections().get(connPos).getWeight() + finalLen*b[pNum][0] + 5*r.nextGaussian();
-                                else
-                                    changeVal = basis.layers[layerPos][nodePos].getConnections().get(connPos).getWeight() + finalLen*b[pNum][0];
-                                Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
+                                    else if ((double)finalI/finalObjects1.size() > 0.8)
+                                        if(r.nextDouble() > 0.5)
 
-                                object.getBrain().applyChange(c);
+                                            changeVal = basis.weights[layerPos].get(nodePos,connPos) + finalLen*b[pNum][0] + 5*r.nextGaussian();
+                                        else
+                                            changeVal = basis.weights[layerPos].get(nodePos,connPos) + finalLen*b[pNum][0];
+                                Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
+                                basis.weights[layerPos].set(nodePos,connPos,changeVal);
                             }else
                                 object.isBest = true;
                         }
@@ -305,22 +300,18 @@ public class Brain implements Serializable, BrainType {
     }
 
     public static void start(LinkedList<BrainObject> objects){
-        Brain master;
+        Brain2 master;
         double changeVal;
-        Change c;
         Random r = new Random();
 
         objects.get(0).getBrain().randomize();
-        master = objects.get(0).getBrain();
+        master = (Brain2)objects.get(0).getBrain();
         for (BrainObject object : objects) {
-            for (int layerPos = 0; layerPos < master.layers.length; layerPos++) {
-                for (int nodePos = 0; nodePos < master.layers[layerPos].length; nodePos++) {
-                    for (int connPos = 0; connPos < master.layers[layerPos][nodePos].getConnections().size(); connPos++) {
-                        changeVal = r.nextGaussian()*5 + object.getBrain().layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
-                        c = new WeightChange(changeVal,layerPos,nodePos,connPos);
-
-                        object.getBrain().setChange(c);
-                        object.getBrain().applyChange(c);
+            for (int layerPos = 0; layerPos < master.weights.length; layerPos++) {
+                for (int nodePos = 0; nodePos < master.weights[layerPos].getRowDimension(); nodePos++) {
+                    for (int connPos = 0; connPos < master.weights[layerPos].getColumnDimension(); connPos++) {
+                        changeVal = r.nextGaussian()*5 + ((Brain2)object.getBrain()).weights[layerPos].get(nodePos,connPos);
+                        ((Brain2)object.getBrain()).weights[layerPos].set(nodePos,connPos,changeVal);
                     }
                 }
             }
@@ -329,119 +320,60 @@ public class Brain implements Serializable, BrainType {
 
     public static void start(LinkedList<BrainObject> objects, Brain master){
         double changeVal;
-        Change c;
         Random r = new Random();
 
-        for (int i = 0; i<objects.size();i++) {
-            BrainObject object = objects.get(i);
-            for (int layerPos = 0; layerPos < master.layers.length; layerPos++) {
-                for (int nodePos = 0; nodePos < master.layers[layerPos].length; nodePos++) {
-                    for (int connPos = 0; connPos < master.layers[layerPos][nodePos].getConnections().size(); connPos++) {
-                        if(i!=objects.size()-1){
-                            changeVal = r.nextGaussian() + master.layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
-
-                        }else{
-                            changeVal = master.layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
-                        }
-                        c = new WeightChange(changeVal,layerPos,nodePos,connPos);
-
-                        object.getBrain().setChange(c);
-                        object.getBrain().applyChange(c);
+        for (BrainObject object : objects) {
+            for (int layerPos = 0; layerPos < master.weights.length; layerPos++) {
+                for (int nodePos = 0; nodePos < master.weights[layerPos].getRowDimension(); nodePos++) {
+                    for (int connPos = 0; connPos < master.weights[layerPos].getColumnDimension(); connPos++) {
+                        changeVal = r.nextGaussian()*5 + ((Brain2)object.getBrain()).weights[layerPos].get(nodePos,connPos);
+                        ((Brain2)object.getBrain()).weights[layerPos].set(nodePos,connPos,changeVal);
                     }
                 }
             }
         }
-        objects.getLast().isBest = true;
     }
 
     public void applyBrain(Brain b){
-        for (int j = 0; j < this.getLayers().length; j++) {
-            for (int k = 0; k < this.getLayers()[j].length; k++) {
-                for (int l = 0; l < this.getLayers()[j][k].getConnections().size(); l++) {
-                    Connection c = this.getLayers()[j][k].getConnections().get(l);
-                    Connection that = b.getLayers()[j][k].getConnections().get(l);
-                    c.setWeight(that.getWeight());
-                }
-            }
-        }
+
     }
 
     public void randomize(){
-        Random r = new Random();
-        double val;
-        for (int j = 0; j < this.getLayers().length; j++) {
-            for (int k = 0; k < this.getLayers()[j].length; k++) {
-                for (int l = 0; l < this.getLayers()[j][k].getConnections().size(); l++) {
-                    Connection c = this.getLayers()[j][k].getConnections().get(l);
-                    val = r.nextGaussian()+r.nextGaussian()*5;
-                    c.setWeight(val);
-                }
-            }
-        }
+
     }
 
     @Override
     public Brain clone(){
-        Input[] i = new Input[this.layers[0].length];
-        Output[] o = new Output[this.layers[this.layers.length-1].length];
-        Brain b;
-        Arrays.fill(i,new Input(null));
-        Arrays.fill(o,new Output(null));
 
-        b = new Brain(i,this.layers.length-2,this.layers[1].length,o);
-
-        for (int j = 0; j < b.getLayers().length; j++) {
-            for (int k = 0; k < b.getLayers()[j].length; k++) {
-                for (int l = 0; l < b.getLayers()[j][k].getConnections().size(); l++) {
-                    b.getLayers()[j][k].getConnections().get(l).setWeight(
-                            this.getLayers()[j][k].getConnections().get(l).getWeight()
-                    );
-                }
-            }
-        }
-
-        return b;
     }
+
 
     public void update() {
-        for (Node[] layer:layers)
-            for(Node n:layer)
-                n.updated = true;
-        for(Node o:layers[layers.length-1]){
-            ((Output)o).run();
+        Matrix m = new Matrix(inputs.length, 1);
+        Matrix c;
+        for (int i = 0; i < inputs.length; i++) {
+            m.set(i,1,inputs[i].getValue());
         }
-    }
 
-    public void applyChange(Change c){
-        double oldPos;
-        Node n = this.layers[c.getLayerPos()][c.getNodePos()];
-        if (c instanceof WeightChange){
-            n.getConnections().get(((WeightChange)c).getConnectionPos()).setWeight(c.getVal());
+        for (int i = 0; i < weights.length; i++) {
+            m = m.times(weights[i]);
         }
-    }
 
-    public Node[][] getLayers() {
-        return layers;
-    }
-
-    public Change getChange() {
-        return change;
-    }
-
-    public void setChange(Change change) {
-        this.change = change;
+        for (int i = 0; i < outputs.length; i++) {
+            outputs[i].getOutput().run(m.get(i,1));
+        }
     }
 
     @Override
     public String toString(){
         String out = "";
-        for (int i = 1; i < layers.length; i++) {
+        for (int i = 1; i < weights.length; i++) {
             out += "<";
-            out += layers[i].length;
-            for (Node n:layers[i]) {
+            out += weights[i].getRowDimension();
+            for (int j = 0;j < weights[i].getRowDimension();j++) {
                 out += "{";
-                for(Connection c:n.getConnections()){
-                    out += c.getWeight()+",";
+                for(int k = 0;k<weights[i].getColumnDimension();k++){
+                    out += weights[i].get(j,k)+",";
                 }
 
                 out += "}";
@@ -452,4 +384,3 @@ public class Brain implements Serializable, BrainType {
         return out;
     }
 }
-

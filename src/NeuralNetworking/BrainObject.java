@@ -1,10 +1,12 @@
 package NeuralNetworking;
 
+import NeuralNetworking.Change.BrainType;
+
 import java.io.Serializable;
 import java.util.LinkedList;
 
 public abstract class BrainObject implements Comparable<BrainObject>, Serializable {
-    public Brain brain;
+    public BrainType brain;
     private int tick = 1;
     public boolean isBest = false;
     public abstract double getFitness();
@@ -13,7 +15,7 @@ public abstract class BrainObject implements Comparable<BrainObject>, Serializab
     public abstract void reset();
     public abstract String fitnessReport();
 
-    public Brain getBrain() {
+    public BrainType getBrain() {
         return brain;
     }
 
@@ -25,7 +27,7 @@ public abstract class BrainObject implements Comparable<BrainObject>, Serializab
         }
     }
 
-    public void setBrain(Brain brain) {
+    public void setBrain(BrainType brain) {
         this.brain = brain;
     }
 
