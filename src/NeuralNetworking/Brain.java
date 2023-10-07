@@ -95,7 +95,7 @@ public class Brain implements Serializable, BrainType {
 
         BrainObject.sort(objects);
 
-        master = objects.getLast().getBrain();
+        master = (Brain)objects.getLast().getBrain();
         System.out.println(objects.getLast().fitnessReport());
 
         LinkedList<Output> group = new LinkedList<>();
@@ -113,13 +113,12 @@ public class Brain implements Serializable, BrainType {
                                 double changeVal = master.layers[layerPos][nodePos].getConnections().get(connPos).getWeight()+(5*(1+n/10))*r.nextGaussian();
                                 Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
 
-                                object.getBrain().setChange(c);
-                                object.getBrain().applyChange(c);
+                                ((Brain)((Brain)object.getBrain())).layers[layerPos][nodePos].getConnections().get(connPos).setWeight(changeVal);
                             }
                         }
                     }
                 } else{
-                    object.getBrain().randomize();
+                    ((Brain)object.getBrain()).randomize();
                 }
             }));
             if (group.size() > objects.size()/78){
@@ -158,8 +157,8 @@ public class Brain implements Serializable, BrainType {
             group.add(new Output((double x) -> {
                 BrainObject object = finalObjects.get(finalK);
                 LinkedList<Double> weights = new LinkedList<>();
-                for (int i = 0; i < object.getBrain().layers.length; i++) {
-                    for (Node n:object.getBrain().layers[i]) {
+                for (int i = 0; i < ((Brain)((Brain)object.getBrain())).layers.length; i++) {
+                    for (Node n:((Brain)((Brain)object.getBrain())).layers[i]) {
                         for(Connection con:n.getConnections())
                             weights.add(con.getWeight());
                     }
@@ -233,7 +232,7 @@ public class Brain implements Serializable, BrainType {
         Random r = new Random();
 
         BrainObject.sort(objects);
-        Brain basis = objects.getLast().getBrain();
+        Brain basis = (Brain)objects.getLast().getBrain();
 
         System.out.println(objects.getLast().fitnessReport());
 
@@ -251,19 +250,19 @@ public class Brain implements Serializable, BrainType {
             double finalLen = len;
             LinkedList<BrainObject> finalObjects1 = objects;
             group.add(new Output((double x) -> {
-                for (int layerPos = 0; layerPos < object.getBrain().layers.length; layerPos++) {
-                    for (int nodePos = 0; nodePos < object.getBrain().layers[layerPos].length; nodePos++) {
-                        for (int connPos = 0; connPos < object.getBrain().layers[layerPos][nodePos].getConnections().size(); connPos++) {
+                for (int layerPos = 0; layerPos < ((Brain)object.getBrain()).layers.length; layerPos++) {
+                    for (int nodePos = 0; nodePos < ((Brain)object.getBrain()).layers[layerPos].length; nodePos++) {
+                        for (int connPos = 0; connPos < ((Brain)object.getBrain()).layers[layerPos][nodePos].getConnections().size(); connPos++) {
                             int pNum = 0;
                             for (int j = 0; j < layerPos; j++) {
-                                pNum += object.getBrain().layers[layerPos].length;
+                                pNum += ((Brain)object.getBrain()).layers[layerPos].length;
                             }
                             for (int j = 0; j < nodePos; j++) {
-                                pNum += object.getBrain().layers[layerPos][nodePos].getConnections().size();
+                                pNum += ((Brain)object.getBrain()).layers[layerPos][nodePos].getConnections().size();
                             }
 
                             pNum += connPos;
-                            double changeVal=object.getBrain().layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
+                            double changeVal=((Brain)object.getBrain()).layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
                             if (finalI != finalObjects1.size()-1){
                                 if ((double)finalI/finalObjects1.size() > 0.95)
                                     if(r.nextDouble() > 0.95)
@@ -275,7 +274,7 @@ public class Brain implements Serializable, BrainType {
                                     changeVal = basis.layers[layerPos][nodePos].getConnections().get(connPos).getWeight() + finalLen*b[pNum][0];
                                 Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
 
-                                object.getBrain().applyChange(c);
+                                ((Brain)object.getBrain()).applyChange(c);
                             }else
                                 object.isBest = true;
                         }
@@ -311,16 +310,16 @@ public class Brain implements Serializable, BrainType {
         Random r = new Random();
 
         objects.get(0).getBrain().randomize();
-        master = objects.get(0).getBrain();
+        master = (Brain)objects.get(0).getBrain();
         for (BrainObject object : objects) {
             for (int layerPos = 0; layerPos < master.layers.length; layerPos++) {
                 for (int nodePos = 0; nodePos < master.layers[layerPos].length; nodePos++) {
                     for (int connPos = 0; connPos < master.layers[layerPos][nodePos].getConnections().size(); connPos++) {
-                        changeVal = r.nextGaussian()*5 + object.getBrain().layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
+                        changeVal = r.nextGaussian()*5 + ((Brain)object.getBrain()).layers[layerPos][nodePos].getConnections().get(connPos).getWeight();
                         c = new WeightChange(changeVal,layerPos,nodePos,connPos);
 
-                        object.getBrain().setChange(c);
-                        object.getBrain().applyChange(c);
+                        ((Brain)object.getBrain()).setChange(c);
+                        ((Brain)object.getBrain()).applyChange(c);
                     }
                 }
             }
@@ -345,8 +344,8 @@ public class Brain implements Serializable, BrainType {
                         }
                         c = new WeightChange(changeVal,layerPos,nodePos,connPos);
 
-                        object.getBrain().setChange(c);
-                        object.getBrain().applyChange(c);
+                        ((Brain)object.getBrain()).setChange(c);
+                        ((Brain)object.getBrain()).applyChange(c);
                     }
                 }
             }
@@ -354,12 +353,12 @@ public class Brain implements Serializable, BrainType {
         objects.getLast().isBest = true;
     }
 
-    public void applyBrain(Brain b){
+    public void applyBrain(BrainType b){
         for (int j = 0; j < this.getLayers().length; j++) {
             for (int k = 0; k < this.getLayers()[j].length; k++) {
                 for (int l = 0; l < this.getLayers()[j][k].getConnections().size(); l++) {
                     Connection c = this.getLayers()[j][k].getConnections().get(l);
-                    Connection that = b.getLayers()[j][k].getConnections().get(l);
+                    Connection that = ((Brain)b).getLayers()[j][k].getConnections().get(l);
                     c.setWeight(that.getWeight());
                 }
             }

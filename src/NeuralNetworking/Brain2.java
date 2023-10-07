@@ -27,7 +27,7 @@ public class Brain2 implements Serializable, BrainType {
         weights[0] = new Matrix(inputLayer.length,hiddenLayerSize);
         weights[hiddenLayerCount+1] = new Matrix(hiddenLayerSize,outputLayer.length);
         for (int i = 1; i <= hiddenLayerCount; i++) {
-            weights[i] = new Matrix(hiddenLayerSize,hiddenLayerSize);
+            weights[i] = new Matrix(this.weights[i-1].getColumnDimension(),hiddenLayerSize);
         }
     }
     //({6.0764101506668835,5.186463528692611,-1.1143764128869569},{5.141913836368177,-3.3271683493025677,-2.341500083997435}),({4.616472768631368,4.813948901386801},{-4.37902181191741,-4.6337938134514625}),({8.289072083159363,3.938348718377254},{5.81960339701706,6.192164241732041})
@@ -43,6 +43,12 @@ public class Brain2 implements Serializable, BrainType {
         char c;
 
         weights = new Matrix[hiddenLayerCount+2];
+
+        weights[0] = new Matrix(inputLayer.length,hiddenLayerCount);
+        weights[hiddenLayerCount+1] = new Matrix(hiddenLayerCount,outputLayer.length);
+        for (int i = 1; i <= hiddenLayerCount; i++) {
+            weights[i] = new Matrix(this.weights[i-1].getColumnDimension(),hiddenLayerCount);
+        }
 
         s.useDelimiter("");
         while(s.hasNext()){
@@ -60,16 +66,17 @@ public class Brain2 implements Serializable, BrainType {
                     case '<':
                         s.useDelimiter("\\{");
                         int layerSize = s.nextInt();
+                        //weights[0] = new Matrix(inputLayer.length,layerSize);
                         s.useDelimiter("");
 
-                        currentLayer++;
                         if (currentLayer == 0){
                             weights[currentLayer] = new Matrix(inputLayer.length,layerSize);
                         }else if (currentLayer<hiddenLayerCount+2){
-                            weights[currentLayer] = new Matrix(layerSize,layerSize);
+                            weights[currentLayer] = new Matrix(weights[currentLayer-1].getColumnDimension(),layerSize);
                         }else{
-                            weights[currentLayer] = new Matrix(outputLayer.length,layerSize);
+                            weights[currentLayer] = new Matrix(layerSize,outputLayer.length);
                         }
+                        currentLayer++;
                         currentNode = -1;
                         break;
                     case '{':
@@ -106,7 +113,7 @@ public class Brain2 implements Serializable, BrainType {
                         for (int nodePos = 0; nodePos < master.weights[layerPos].getRowDimension(); nodePos++) {
                             for (int connPos = 0; connPos < master.weights[layerPos].getColumnDimension(); connPos++) {
                                 double changeVal = master.weights[layerPos].get(nodePos,connPos)+(5*(1+n/10))*r.nextGaussian();
-                                Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
+                                //Change c = new WeightChange(changeVal,layerPos,nodePos,connPos);
                                 ((Brain2)object.getBrain()).weights[layerPos].set(nodePos,connPos,changeVal);
                             }
                         }
@@ -318,7 +325,7 @@ public class Brain2 implements Serializable, BrainType {
         }
     }
 
-    public static void start(LinkedList<BrainObject> objects, Brain master){
+    public static void start(LinkedList<BrainObject> objects, Brain2 master){
         double changeVal;
         Random r = new Random();
 
@@ -334,25 +341,35 @@ public class Brain2 implements Serializable, BrainType {
         }
     }
 
-    public void applyBrain(Brain b){
-
+    public void applyBrain(BrainType b){
+        this.weights = ((Brain2)b).weights.clone();
     }
 
     public void randomize(){
-
+        Random r = new Random();
+        double val;
+        for (int j = 0; j < weights.length; j++) {
+            for (int k = 0; k < weights[j].getRowDimension(); k++) {
+                for (int l = 0; l < weights[j].getColumnDimension(); l++) {
+                    val = r.nextGaussian()+r.nextGaussian()*5;
+                    weights[j].set(k,l,val);
+                }
+            }
+        }
     }
 
     @Override
-    public Brain clone(){
-
+    public Brain2 clone(){
+        Brain2 n = new Brain2(inputs,weights.length-2,weights[1].getRowDimension(),outputs);
+        n.weights = this.weights.clone();
+        return n;
     }
 
-
     public void update() {
-        Matrix m = new Matrix(inputs.length, 1);
+        Matrix m = new Matrix(1,inputs.length);
         Matrix c;
         for (int i = 0; i < inputs.length; i++) {
-            m.set(i,1,inputs[i].getValue());
+            m.set(0,i,inputs[i].getValue());
         }
 
         for (int i = 0; i < weights.length; i++) {
@@ -360,7 +377,7 @@ public class Brain2 implements Serializable, BrainType {
         }
 
         for (int i = 0; i < outputs.length; i++) {
-            outputs[i].getOutput().run(m.get(i,1));
+            outputs[i].getOutput().run(m.get(0,i));
         }
     }
 
