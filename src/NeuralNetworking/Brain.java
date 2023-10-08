@@ -40,7 +40,7 @@ public class Brain implements Serializable, BrainType {
     }
     //({6.0764101506668835,5.186463528692611,-1.1143764128869569},{5.141913836368177,-3.3271683493025677,-2.341500083997435}),({4.616472768631368,4.813948901386801},{-4.37902181191741,-4.6337938134514625}),({8.289072083159363,3.938348718377254},{5.81960339701706,6.192164241732041})
     public Brain(Input[] inputLayer, Output[] outputLayer, String weights){
-        int hiddenLayerCount = weights.length() - weights.replaceAll("<","").length();
+        int hiddenLayerCount = weights.length() - weights.replaceAll("<","").length()-2;
         int currentLayer = 0;
         int currentNode = -1;
         int connectionNum = 0;
@@ -434,7 +434,7 @@ public class Brain implements Serializable, BrainType {
     @Override
     public String toString(){
         String out = "";
-        for (int i = 1; i < layers.length; i++) {
+        for (int i = 0; i < layers.length; i++) {
             out += "<";
             out += layers[i].length;
             for (Node n:layers[i]) {

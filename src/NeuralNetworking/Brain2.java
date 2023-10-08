@@ -23,17 +23,17 @@ public class Brain2 implements Serializable, BrainType {
     public Brain2(Input[] inputLayer, int hiddenLayerCount, int hiddenLayerSize, Output[] outputLayer){
         inputs = inputLayer;
         outputs = outputLayer;
-        weights = new Matrix[hiddenLayerCount+2];
+        weights = new Matrix[hiddenLayerCount+1];
         weights[0] = new Matrix(inputLayer.length,hiddenLayerSize);
-        weights[hiddenLayerCount+1] = new Matrix(hiddenLayerSize,outputLayer.length);
-        for (int i = 1; i <= hiddenLayerCount; i++) {
+        weights[hiddenLayerCount] = new Matrix(hiddenLayerSize,outputLayer.length);
+        for (int i = 1; i < hiddenLayerCount; i++) {
             weights[i] = new Matrix(this.weights[i-1].getColumnDimension(),hiddenLayerSize);
         }
     }
     //({6.0764101506668835,5.186463528692611,-1.1143764128869569},{5.141913836368177,-3.3271683493025677,-2.341500083997435}),({4.616472768631368,4.813948901386801},{-4.37902181191741,-4.6337938134514625}),({8.289072083159363,3.938348718377254},{5.81960339701706,6.192164241732041})
     public Brain2(Input[] inputLayer, Output[] outputLayer, String data){
-        int hiddenLayerCount = data.length() - data.replaceAll("<","").length();
-        int currentLayer = 0;
+        int hiddenLayerCount = data.length() - data.replaceAll("<","").length()-1;
+        int currentLayer = -1;
         int currentNode = -1;
         int connectionNum = 0;
         inputs = inputLayer;
@@ -41,14 +41,9 @@ public class Brain2 implements Serializable, BrainType {
 
         Scanner s = new Scanner(data);
         char c;
-
-        weights = new Matrix[hiddenLayerCount+2];
-
-        weights[0] = new Matrix(inputLayer.length,hiddenLayerCount);
-        weights[hiddenLayerCount+1] = new Matrix(hiddenLayerCount,outputLayer.length);
-        for (int i = 1; i <= hiddenLayerCount; i++) {
-            weights[i] = new Matrix(this.weights[i-1].getColumnDimension(),hiddenLayerCount);
-        }
+        int hiddenLayerSize = (data.length() - data.replaceAll(",","").length())/(inputLayer.length+outputLayer.length+(hiddenLayerCount-1));
+        System.out.println(hiddenLayerSize);
+        weights = new Matrix[hiddenLayerCount+1];
 
         s.useDelimiter("");
         while(s.hasNext()){
@@ -68,15 +63,15 @@ public class Brain2 implements Serializable, BrainType {
                         int layerSize = s.nextInt();
                         //weights[0] = new Matrix(inputLayer.length,layerSize);
                         s.useDelimiter("");
+                        currentLayer++;
 
                         if (currentLayer == 0){
                             weights[currentLayer] = new Matrix(inputLayer.length,layerSize);
-                        }else if (currentLayer<hiddenLayerCount+2){
+                        }else if (currentLayer<hiddenLayerCount+1){
                             weights[currentLayer] = new Matrix(weights[currentLayer-1].getColumnDimension(),layerSize);
                         }else{
                             weights[currentLayer] = new Matrix(layerSize,outputLayer.length);
                         }
-                        currentLayer++;
                         currentNode = -1;
                         break;
                     case '{':
@@ -87,6 +82,7 @@ public class Brain2 implements Serializable, BrainType {
                 }
             }
         }
+
         //System.out.println();
     }
 
@@ -384,9 +380,9 @@ public class Brain2 implements Serializable, BrainType {
     @Override
     public String toString(){
         String out = "";
-        for (int i = 1; i < weights.length; i++) {
+        for (int i = 0; i < weights.length; i++) {
             out += "<";
-            out += weights[i].getRowDimension();
+            out += weights[i].getColumnDimension();
             for (int j = 0;j < weights[i].getRowDimension();j++) {
                 out += "{";
                 for(int k = 0;k<weights[i].getColumnDimension();k++){
